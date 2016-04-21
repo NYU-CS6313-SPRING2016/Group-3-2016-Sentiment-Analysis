@@ -18,6 +18,13 @@ app.get('/sentimentresult', function(req, res) {
 });
 
 app.use(express.static(__dirname + '/public'));
+app.get('/dorlingCartogram', function(req, res) {
+	res.sendFile(__dirname + '/public/dorlingCartogram.html');
+})
+
+app.get('/test', function(req, res) {
+	res.sendFile(__dirname + '/public/test.html');
+})
 io.on('connection', function(socket) {
 	console.log("socket connection is on");
 	stream(function(data) {
@@ -25,6 +32,7 @@ io.on('connection', function(socket) {
 		socket.emit('tweet', data);
 	});
 });
+
 
 /*app.get('/stream', function(req, res) {
 	stream(function(data) {
