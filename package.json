@@ -1,0 +1,16 @@
+{
+  "name": "tweet-sentiment",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node tweetSentiment.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.13.4",
+    "mongoose": "^4.4.11",
+    "sentiment": "^1.0.6",
+    "socket.io": "^1.4.5",
+    "twit": "^2.2.3"
+  }
+}
