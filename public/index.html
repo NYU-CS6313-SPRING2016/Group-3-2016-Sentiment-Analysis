@@ -1,0 +1,26 @@
+<html>
+	<head>
+		<title>Tweet</title>
+	</head>
+	<body>
+		<input id="tweet" type="text"/>
+	</body>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+	<script>
+        var host = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : '');
+		socket = io.connect();
+		socket.on('tweet', function(data) {
+			$("#tweet").val(data.text);
+			console.log("plz show me");
+			console.log(data.text);
+		}); 
+	</script>
+    <script>
+    
+        d3.json("/sentimentResult", function(error, data) {
+            console.log(data);
+        });
+    </script>
+</html>

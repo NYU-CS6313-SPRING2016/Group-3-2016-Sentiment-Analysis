@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+    .land {
+      fill: #222;
+    }
+    
+    .nestedXAxis,.nestedYAxis {
+        font: 10px sans-serif;
+    }
+    .nestedXAxis,.nestedYAxis path,
+    .nestedXAxis,.nestedYAxis line {
+        fill: none;
+        stroke: #000;
+    }
+    
+    .xAxis,.yAxis {
+      font: 10px sans-serif;
+    }
+    .xAxis,.yAxis path,
+    .xAxis,.yAxis line {
+      fill: none;
+      stroke: #000;
+    }
+    .xAxis path{
+        display: none;
+    }
+    .caption {
+      font-weight: bold;
+    }
+
+    .key path {
+      display: none;
+    }
+
+    .key line {
+      stroke: #FFF;
+      shape-rendering: crispEdges;
+    }
+    .county-boundary {
+      fill: none;
+      stroke: #fff;
+      stroke-width: .5px;
+    }
+
+    .state-boundary {
+      fill: none;
+      stroke: #fff;
+    }
+
+    #mainContent {
+        float: left;
+        width: 900px;
+
+    }
+    #nestedSVG {
+        float: right;
+        width:360px;
+        background-color: rgba(255,255,255,0.8);
+        border: solid 1px black;
+    }   
+/*using class attribute to fill color
+.q0-9 { fill:rgb(247,251,255); }
+.q1-9 { fill:rgb(222,235,247); }
+.q2-9 { fill:rgb(198,219,239); }
+*/
+
+</style>
+<body>
+
+<div id="mainContent">
+    <div id="option">
+        <div>
+            <select id="sentimentOption">
+                <option value="Positive">Positive Analysis</option>
+                <option value="Negative">Negative Analysis</option>
+            </select>
+        </div>
+        <div>
+            <select id="candidateOption">
+                <option value="Donald Trump">Donald Trump</option>
+                <option value="Hillary Clinton">Hillary Clinton</option>
+                <option value="Bernie Sanders">Bernie Sanders</option>
+                <option value="Ted Cruz">Ted Cruz</option>
+            </select>
+        </div>
+    </div>
+</div>
+<div id="nestedSVG"></div>
+<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script>
+    
+$("#sentimentOption").change(function() {
+    selectChanged();
+});
+$("#candidateOption").change(function() {
+   selectChanged();
+});
+function selectChanged() {
+    d3.selectAll("svg > *").remove();
+    curCandidate = $("#candidateOption").val();
+    curSentiment = $("#sentimentOption").val();
+    render(_us, _sentimentResults, curCandidate, curSentiment, curState);
+}
+var statesList = function(num) {
+    switch(num) {
+        case 1: return "Alabama";
+        case 2: return "Alaska";
+        case 4: return "Arizona";
+        case 5: return "Arkansas";
+        case 6: return "California";
+        case 8: return "Colorado";
+        case 9: return "Connecticut";
+        case 10: return "Delaware";
+        case 12: return "Florida";
+        case 13: return "Georgia";
+        case 15: return "Hawaii";
+        case 16: return "Idaho";
+        case 17: return "Illinois";
+        case 18: return "Indiana";
+        case 19: return "Iowa";
+        case 20: return "Kansas";
+        case 21: return "Kentucky";
+        case 22: return "Louisiana";
+        case 23: return "Maine";
+        case 24: return "Maryland";
+        case 25: return "Massachusetts";
+        case 26: return "Michigan";
+        case 27: return "Minnesota";
+        case 28: return "Mississippi";
+        case 29: return "Missouri";
+        case 30: return "Montana";
+        case 31: return "Nebraska";
+        case 32: return "Nevada";
+        case 33: return "New Hampshire";
+        case 34: return "New Jersey";
+        case 35: return "New Mexico";
+        case 36: return "New York";
+        case 37: return "North Carolina";
+        case 38: return "North Dakota";
+        case 39: return "Ohio";
+        case 40: return "Oklahoma";
+        case 41: return "Oregon";
+        case 42: return "Pennsylvania";
+        case 44: return "Rhode Island";
+        case 45: return "South Carolina";
+        case 46: return "South Dakota";
+        case 47: return "Tennessee";
+        case 48: return "Texas";
+        case 49: return "Utah";
+        case 50: return "Vermont";
+        case 51: return "Virginia";
+        case 53: return "Washington";
+        case 54: return "West Virginia";
+        case 55: return "Wisconsin";
+        case 56: return "Wyoming";
+    }
+}
+var margin = {top: 0, right: 0, bottom: 0, left: 0},
+    width = 900 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+//Global Varibles
+//storing the json data
+var _us,
+    _sentimentResults;
+var curCandidate = "Donald Trump",
+    curSentiment = "Positive",
+    curState = "California";
+
+//tick format
+var formatPercent = d3.format(".0%"),
+    formatNumber = d3.format(".0f");
+
+//element of choropleth
+var projection = d3.geo.albersUsa()
+    .scale(1000)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection);
+    
+var svg = d3.select("#mainContent").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+//color handler
+var color = function(v) {   
+    switch(curSentiment) {
+        case "Positive" : return positiveColor(v);
+        case "Negative" : return negativeColor(v);
+    }
+}
+var redSaturation = ["#F0F0F0","#FFD7D7","#FF8788","#FF1011"];
+var blueSaturation = ["#08306B","#4C78D9","#AEE8FE","#F0F0F0"];
+var positiveDegree = [0, 1.5, 3, 10],
+    negativeDegree = [-10, -5, -3, 0];
+var positiveColor = function(v) {
+    if(v == positiveDegree[0]) return redSaturation[0];
+    if(v < positiveDegree[1]) return redSaturation[1];
+    if(v < positiveDegree[2]) return redSaturation[2];
+    if(v < positiveDegree[3]) return redSaturation[3];
+}
+var negativeColor = function(v) {
+    if(v == negativeDegree[3]) return blueSaturation[3];
+    if(v > negativeDegree[2]) return blueSaturation[2];
+    if(v > negativeDegree[1]) return blueSaturation[1];
+    if(v > negativeDegree[0]) return blueSaturation[0];
+}
+    
+//elements of bar chart for nested svg
+var nestedSVG = d3.select("#nestedSVG").append("svg")
+    .attr("width", 360)
+    .attr("height", 400)
+    .attr("transform", "translate(0," + 30 + ")");
+
+var nestedXScale = d3.scale.ordinal()
+    .domain(["DT", "HC", "TC", "BS"])
+    .rangeRoundBands([0, 360 - 80], .1);
+var nestedYScale = d3.scale.linear()
+    .domain([-1,1])
+    .range([400 - 100, 0]);
+var nestedXAxis = d3.svg.axis()
+    .scale(nestedXScale)
+    .orient("bottom");
+var nestedYAxis = d3.svg.axis()
+    .scale(nestedYScale)
+    .orient("left")
+    .tickValues([-1,-.8,-.6,-.4,-.2,0,.2,.4,.6,.8,1])
+    .tickFormat(formatPercent);
+//elements of bar chart for overview
+var svgBar = d3.select("#mainContent").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("transform", "translate(0," + height +")");
+var xa = d3.scale.ordinal()
+    .rangeRoundBands([0, width - 80], .1);
+var ya = d3.scale.linear()
+    .range([height - 100, 0]);
+var xAxis = d3.svg.axis()
+    .scale(xa)
+    .orient("bottom");
+var yAxis = d3.svg.axis()
+    .scale(ya)
+    .orient("left");
+    
+//function
+function render(us, sentimentResults, curCandidate, curSentiment, curState) {
+    renderThresholdKey();  
+    var results = sentimentResults
+      .filter(function(d) { return d.candidates === curCandidate; })
+      .map(function(d) {
+        var point = projection(d.coordinates),
+            state = d.state,
+            avgScore = curSentiment === "Positive" ? d.positiveAvgScore : d.negativeAvgScore,
+            amount = d.amount,
+            candidate = d.candidates;
+        return {
+          x: point[0], y: point[1],
+          state: state,
+          avgScore: avgScore,
+          amount: amount,
+          candidate: candidate
+        };
+      });
+    var nestedResults = sentimentResults
+        .filter(function(d) { return d.state === curState; })
+        .map(function(d) {
+            var state = d.state,
+                positivePercent = d.positivePercent,
+                negativePercent = d.negativePercent,
+                amount = d.amount;
+            var candidate = function(v) {
+                switch(v) {
+                    case "Donald Trump": return "DT";
+                    case "Hillary Clinton": return "HC";
+                    case "Ted Cruz": return "TC";
+                    case "Bernie Sanders": return "BS";
+                }
+            }
+            return {
+                state: state,
+                positivePercent: positivePercent,
+                negativePercent: negativePercent,
+                amount: amount,
+                candidate: candidate(d.candidates)
+            };
+        });
+    console.log(nestedResults);
+    //map
+    renderMap(us, results);
+    //bar chart
+    renderBarChart(results);
+    //nested bar chart
+    renderNestedBarChart(nestedResults);
+}
+    
+function renderMap(us, results) {
+    var states = topojson.feature(us, us.objects.states, function(a, b) { return a !== b; }).features;
+    var g = svg.append("g")
+      .attr("class", "state");
+    g.selectAll("path")
+      .data(states)
+    .enter().append("path")
+      .attr("d", path)
+      .style("fill", function(d) { 
+            for(var i = 0; i < results.length; i ++) {
+                if(statesList(d.id) == results[i].state) {
+                    return color(results[i].avgScore);
+                }
+            }
+            return "#808080";    
+        })
+        .on('mouseover', function(d, i) {
+            d3.select(this)
+                .style("stroke", "black")
+                .style("stroke-width", 3);
+        })
+        .on('mouseout', function(d, i) {
+            d3.select(this).style("stroke", undefined);
+        })
+        .on('click', function(d, i) {
+            for(var i = 0; i < results.length; i ++) {
+                if(statesList(d.id) == results[i].state) {
+                    curState = results[i].state;
+                    break;
+                }
+            }
+            d3.selectAll("svg > *").remove();
+            render(_us, _sentimentResults, curCandidate, curSentiment, curState);
+        })
+    .append("title")
+      .text(function(d) { 
+        for(var i = 0; i < results.length; i ++) {
+            if(statesList(d.id) == results[i].state) {
+                return "Tweets Amount of " + statesList(d.id) + ":" + results[i].amount;
+            }
+        }    
+        return "No Tweets in " + statesList(d.id); 
+    });
+    //state-boundary
+    svg.append("path")
+      .datum(topojson.feature(us, us.objects.states, function(a, b) { return a !== b; }))
+      .attr("class", "state-boundary")
+      .attr("d", path);
+}
+function renderBarChart(results) {
+    xa.domain(results.map(function(d) { return d.state; }));
+    ya.domain(d3.extent(results, function(d) { return d.amount; }));
+    //load xAxis
+    svgBar.append("g")
+        .attr("class", "xAxis")
+        .attr("transform", "translate(40," +  (height - 75) + ")")
+        .call(xAxis)
+        .selectAll("text")  
+            .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", "rotate(-65)" );
+    //load yAxis
+    svgBar.append("g")
+        .attr("class", "yAxis")
+        .attr("transform", "translate(40,25)")
+        .call(yAxis)
+        .append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .text("Amount of Tweets");
+    //load bar
+    var barGroup = svgBar.append("g")
+                .attr("transform", "translate(40,0)");
+    barGroup.selectAll("rect")
+        .data(results)
+        .enter().append("rect")
+            .attr("class", "bar")
+            .attr("x", function(d) { return xa(d.state); })
+            .attr("width", xa.rangeBand())
+            .attr("y", function(d) { return ya(d.amount) + 24; })
+            .attr("height",function(d) { return height - 99 - ya(d.amount); })
+            .attr("fill", function(d) { return color(d.avgScore); })
+            .on('mouseover', function(d, i) {
+                d3.select(this)
+                    .style("stroke", "black")
+                    .style("stroke-width", 2);
+            })
+            .on('mouseout', function(d, i) {
+                d3.select(this).style("stroke", undefined);
+            })
+    barGroup.selectAll("text")
+        .data(results)
+        .enter().append("text")
+        .attr("x", function(d) { return xa(d.state) + 2; })
+            .attr("y", function(d) { return ya(d.amount) + 20; })
+            .attr("dy", ".35em")
+            .text(function(d) { return d.amount;})
+            .attr("font-family", "sans-serif")
+            .attr("font-size", "10")
+            .attr("fill", "black");
+}
+function renderNestedBarChart(nestedResults) {
+    nestedSVG
+        .append("text")
+            .attr("transform", "translate(50,15)")
+            .style("font", "13px sans-serif")
+            .text("Tweets percentage in " + curState + " per candidate");
+    nestedSVG.append("g")
+        .attr("class", "nestedYAxis")
+        .attr("transform", "translate(40,20)")
+        .call(nestedYAxis)
+    nestedSVG.append("g")
+        .attr("class", "nestedXAxis")
+        .attr("transform", "translate(40,170)")//150 + 20
+        .call(nestedXAxis);
+        
+    var positiveBarGroup = nestedSVG.append("g")
+        .attr("transform", "translate(40,0)");
+    positiveBarGroup.selectAll("rect")
+        .data(nestedResults)
+        .enter().append("rect")
+            .attr("class", "positiveBar")
+            .attr("x", function(d) { return nestedXScale(d.candidate); })
+            .attr("y", function(d) { return nestedYScale(d.positivePercent); })
+            .attr("width", nestedXScale.rangeBand())
+            .attr("height", function(d) { return (150 - nestedYScale(d.positivePercent)); })
+            .attr("fill", "#FF1011")
+            .attr("opacity", 0.5)
+            .attr("transform", "translate(0,20)")
+   var negativeBarGroup = nestedSVG.append("g")
+        .attr("transform", "translate(40,0)");
+    negativeBarGroup.selectAll("rect")
+        .data(nestedResults)
+        .enter().append("rect")
+            .attr("class", "negativeBar")
+            .attr("x", function(d) { return nestedXScale(d.candidate); })
+            .attr("y", function(d) { return nestedYScale(0);})
+            .attr("width", nestedXScale.rangeBand())
+            .attr("height", function(d) { return nestedYScale(d.negativePercent * (-1)) - 150; })
+            .attr("fill", "#08306B") 
+            .attr("opacity", 0.5)
+            .attr("transform", "translate(0,20)")
+    
+    //thresholdKey for nested bar chart
+    var g_key = nestedSVG.append("g")
+            .attr("class", "key")
+            .attr("transform","translate(100,350)");
+        var x = d3.scale.ordinal()
+            .domain(["positive tweet", "negative tweet"])
+            .rangeRoundBands([0, 300], .1);
+    g_key.selectAll("rect")
+        .data(["#FF8888", "#8498b5"])
+        .enter().append("rect")
+            .attr("height", 8)
+            .attr("x", function(d, i) { return i === 0 ? 0 : x.rangeBand();})
+            .attr("width", function(d) { return x.rangeBand(); })
+            .attr("fill", function(d) { return d; });
+    g_key.selectAll("text")
+        .data(x.domain())
+        .enter().append("text")
+            .attr("x", function(d, i) { return i === 0 ? 0 : x.rangeBand();})
+            .style("font", "13px sans-serif")
+            .text(function(d) { return d})
+}
+function renderThresholdKey() {
+    //Threshold Key
+    var colorRange = function() {
+        switch(curSentiment) {
+            case "Positive" : return redSaturation;
+            case "Negative" : return blueSaturation;
+        }
+    }
+    var sentimentDegree = function() {
+        switch(curSentiment) {
+            case "Positive" : return positiveDegree;
+            case "Negative" : return negativeDegree;
+        }
+    }
+    var scaleDomain = function() {
+        switch(curSentiment) {
+            case "Positive" : return [-.5, 10];
+            case "Negative" : return [-10, 1];
+        }
+    }
+    var g2 = svg.append("g")
+        .attr("class", "key")
+        .attr("transform", "translate("+ (width -440) + ",40)");
+    var axisColor = d3.scale.threshold()
+        .domain(sentimentDegree())
+        .range(colorRange());
+    var x = d3.scale.linear()
+        .domain(scaleDomain())
+        .range([0, 240]);
+    var threashold = d3.svg.axis()
+        .scale(x)
+        .orient("bottom")
+        .tickSize(13)
+        .tickValues(axisColor.domain())
+        .tickFormat(function(d) { return d === .5 ? formatNumber(d) : d});
+    g2.selectAll("rect")
+        .data(axisColor.range().map(function(d, i) {
+            switch(curSentiment) {
+                case "Positive" : return {
+                    x0: i ? x(axisColor.domain()[i - 1]) : x.range()[0],
+                    x1: i < axisColor.domain().length ? x(axisColor.domain()[i]) : x.range()[1],
+                    z: d
+                  };
+                case "Negative" : return {
+                    x0: i < axisColor.domain().length ? x(axisColor.domain()[i]) : x.range()[1],
+                    x1: i < axisColor.domain().length - 1 ? x(axisColor.domain()[i + 1]) : x.range()[1],
+                    z: d
+                };
+            }
+        }))
+      .enter().append("rect")
+        .attr("height", 8)
+        .attr("x", function(d) { return d.x0; })
+        .attr("width", function(d) { return d.x1 - d.x0; })
+        .style("fill", function(d) { return d.z; });
+    g2.call(threashold).append("text")
+        .attr("class", "caption")
+        .attr("y", -6)
+        .attr("font-size", 10)
+        .text(curSentiment + " average Score of positive sentiment of each state for " + curCandidate);
+}
+
+    
+    
+d3.select(self.frameElement).style("height", height + "px");
+    
+//get json data    
+queue()
+    .defer(d3.json, "https://raw.githubusercontent.com/WeitaoWang/tweet-sentiment/master/data%20sample/us.json")
+    .defer(d3.json, "https://raw.githubusercontent.com/WeitaoWang/tweet-sentiment/master/data%20sample/sentimentresults.json")
+    //.defer(d3.json, "us.json")
+    //.defer(d3.json, "sentimentresults.json")
+    .await(ready);
+
+function ready(error, us, sentimentResults) {
+    _us = us;
+    _sentimentResults = sentimentResults;
+    render(us, sentimentResults, curCandidate, curSentiment, curState);
+}
+</script>
