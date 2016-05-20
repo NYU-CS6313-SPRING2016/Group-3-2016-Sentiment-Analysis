@@ -8,7 +8,7 @@ tweets were saved for a month long period and then a dictionary machine language
 The screencast can be found at: https://vimeo.com/167437613
 The documentation can be found at: https://docs.google.com/document/d/15LM7FoIhTKKL7BLVSj2K4YtfccN4yWH2cfj9-jfJNYU/edit?usp=sharing
 
-The visualization can be found at: http://tweet-sentiment-nyu.herokuapp.com/test 
+The visualization can be found at: http://tweet-sentiment-nyu.herokuapp.com/
 and no software needs to be installed to load this visualization.
 
 
