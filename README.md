@@ -1,5 +1,7 @@
 # Group-3 ( 2016 Presidential Sentiment Analysis)
 
+Image of tool
+
 ![](/public/img/first.png)
 
 ![](/public/img/second.png)
