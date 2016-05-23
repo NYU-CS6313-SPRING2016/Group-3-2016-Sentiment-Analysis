@@ -1,6 +1,7 @@
 # Group-3 ( 2016 Presidential Sentiment Analysis)
 
-
+(/public/img/first.png)
+(/public/img/second.png)
 
 This GitHub repository stores the code that was written to perform a sentiment anaylsis of tweets about the 2016 presidential candidates. This project was created during the Information Visualization course taught at NYU-Poly by Professor Bertini. 
 
